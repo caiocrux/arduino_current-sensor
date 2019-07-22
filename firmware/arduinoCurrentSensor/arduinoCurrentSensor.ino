@@ -3,8 +3,9 @@
 #include <Ethernet.h>
 #include <PubSubClient.h>
 #include "EmonLib.h"                   // Include Emon Library
+//#include <EEPROM.h>
+//int voltage = EEPROM.read(0);
 int voltage = 127;
-
 EnergyMonitor emon0;                   // Create an instance
 EnergyMonitor emon1;                   // Create an instance
 EnergyMonitor emon2;                   // Create an instance
@@ -27,7 +28,7 @@ void reconnect(void);
 void setup()
 {  
   // Update these with values suitable for your network.
-  IPAddress server(172,31,141,156);
+  IPAddress server(172,31,141,166);
   byte mac[]    = {0xDE, 0xED, 0xBA, 0xFE, 0xFE, 0xED };
   Serial.begin(9600);
   emon0.current(0, 6.0606);             // Current: input pin, calibration.
@@ -56,8 +57,9 @@ void loop()
       mqttEmit("sensors/arduino/energy/A2",(String)getApparentPowerA2());
       mqttEmit("sensors/arduino/energy/A3",(String)getApparentPowerA3());
       mqttEmit("sensors/arduino/energy/A4",(String)getApparentPowerA4());
+      mqttEmit("sensors/arduino/energy/total",(String)( (getApparentPowerA4() +getApparentPowerA3() +getApparentPowerA2() +getApparentPowerA1() +getApparentPowerA0())/1000 ));
       delay(1500);
-      mqttEmit("sensors/arduino/energy/total",(String)(getApparentPowerA4() +getApparentPowerA3() +getApparentPowerA2() +getApparentPowerA1() +getApparentPowerA0()));
+
   }
   client.loop();
 
@@ -66,40 +68,40 @@ void loop()
 float getApparentPowerA0() {
   double IrmsA0 = emon0.calcIrms(1480);  // Calculate Irms only
   Serial.print ("Current in A0 ->");
-  Serial.print(IrmsA0*voltage);         // Apparent power
-  Serial.print(" ");
+  //Serial.print(IrmsA0*voltage);         // Apparent power
+  //Serial.print(" ");
   Serial.println(IrmsA0);          // Irms
   return (IrmsA0*voltage);
 }
 float getApparentPowerA1() {
   double IrmsA1 = emon1.calcIrms(1480);  // Calculate Irms only
   Serial.print ("Apparent power in A1 ->");
-  Serial.print(IrmsA1*voltage);         // Apparent power
-  Serial.print(" ");
+  //Serial.print(IrmsA1*voltage);         // Apparent power
+  //Serial.print(" ");
   Serial.println(IrmsA1);          // Irms
   return (IrmsA1*voltage);
 }
 float getApparentPowerA2() {
   double IrmsA2 = emon2.calcIrms(1480);  // Calculate Irms only
   Serial.print ("Apparent power in A2 ->");
-  Serial.print(IrmsA2*voltage);         // Apparent power
-  Serial.print(" ");
+  //Serial.print(IrmsA2*voltage);         // Apparent power
+  //Serial.print(" ");
   Serial.println(IrmsA2);          // Irms
   return (IrmsA2*voltage);
 }
 float getApparentPowerA3() {
   double IrmsA3 = emon3.calcIrms(1480);  // Calculate Irms only
   Serial.print ("Apparent power in A3 ->");
-  Serial.print(IrmsA3*voltage);         // Apparent power
-  Serial.print(" ");
+  //Serial.print(IrmsA3*voltage);         // Apparent power
+  //Serial.print(" ");
   Serial.println(IrmsA3);          // Irms
   return ( IrmsA3*voltage);
 }
 float getApparentPowerA4() {
   double IrmsA4 = emon4.calcIrms(1480);  // Calculate Irms only
   Serial.print ("Apparent power in A4 ->");
-  Serial.print(IrmsA4*voltage);         // Apparent power
-  Serial.print(" ");
+  //Serial.print(IrmsA4*voltage);         // Apparent power
+  //Serial.print(" ");
   Serial.println(IrmsA4);          // Irms
   return (IrmsA4*voltage);
 }
@@ -115,13 +117,24 @@ void mqttEmit(String topic, String value) {
   }
 }
 void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Message arrived [");
-  Serial.print(topic);
-  Serial.print("] ");
-  for (int i=0;i<length;i++) {
-    Serial.print((char)payload[i]);
+  //Serial.print("Message arrived [");
+  //Serial.print(topic);
+  //Serial.print("] ");
+  //Serial.print("Message lenght [");
+  //Serial.print(length);
+  //Serial.print("] ");
+  
+  //for (int i=0;i<length;i++) {
+  //  Serial.print((char)payload[i]);
+  //}
+  payload[length] = '\0'; // Make payload a string by NULL terminating it.
+  if (strcmp(topic,"input/information/tensao")==0){
+    //Serial.println("change the value of voltage");
+    voltage = atoi((char *)payload);
+    //EEPROM.write(0, voltage);
+    //Serial.println(voltage);
+    
   }
-  Serial.println();
 }
 
 void reconnect() {
@@ -132,9 +145,7 @@ void reconnect() {
     if (client.connect("arduinoClient")) {
       Serial.println("connected");
       // Once connected, publish an announcement...
-      client.publish("outTopic","hello world");
-      // ... and resubscribe
-      client.subscribe("inTopic");
+      client.subscribe("input/information/tensao");
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
